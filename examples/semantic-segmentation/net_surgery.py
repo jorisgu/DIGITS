@@ -6,6 +6,12 @@ Downloads BVLC Alexnet and perform the require net surgery to convert into an FC
 
 import urllib
 
+#import sys
+#sys.path
+#sys.path.append('~/workspace/jg_pfr/caffe-fast-rcnn/distribute/python')
+
+
+
 import caffe
 
 ALEXNET_PROTOTXT_URL = "https://raw.githubusercontent.com/BVLC/caffe/rc3/models/bvlc_alexnet/deploy.prototxt"
@@ -25,8 +31,8 @@ def download(url, filename):
 def generate_fcn():
     # download files
     print "Downloading files (this might take a few minutes)..."
-    download(ALEXNET_PROTOTXT_URL, ALEXNET_PROTOTXT_FILENAME)
-    download(ALEXNET_MODEL_URL, ALEXNET_MODEL_FILENAME)
+#    download(ALEXNET_PROTOTXT_URL, ALEXNET_PROTOTXT_FILENAME)
+#    download(ALEXNET_MODEL_URL, ALEXNET_MODEL_FILENAME)
 
     caffe.set_mode_cpu()
 

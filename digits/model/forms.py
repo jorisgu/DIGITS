@@ -78,6 +78,12 @@ class ModelForm(Form):
         default=False,
     )
 
+    # Joris ici
+    #initial_testing = utils.forms.BooleanField(
+    #    u'Avoid first testing',
+    #    default=True,
+    #)
+    
     python_layer_client_file = utils.forms.FileField(
         u'Client-side file',
         validators=[
