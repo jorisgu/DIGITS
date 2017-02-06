@@ -517,14 +517,7 @@ class CaffeTrainTask(TrainTask):
         #        bool(config_value('gpu_list')):
         #    solver.solver_mode = caffe_pb2.SolverParameter.GPU
         #else:
-<<<<<<< HEAD
         solver.solver_mode = caffe_pb2.SolverParameter.CPU
-
-
-=======
-
-        solver.solver_mode = caffe_pb2.SolverParameter.CPU
->>>>>>> e54cf087af4c143470e09616ddd54912cd0d2e4f
 
         solver.snapshot_prefix = self.snapshot_prefix
 
