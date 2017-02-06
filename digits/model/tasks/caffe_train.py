@@ -511,8 +511,8 @@ class CaffeTrainTask(TrainTask):
         # get enum value for solver type
         solver.solver_type = getattr(solver, self.solver_type)
         solver.net = self.train_val_file
-
-        # GPU removed
+        
+        # GPU removed
         # # Set CPU/GPU mode
         # if config_value('caffe')['cuda_enabled'] and bool(config_value('gpu_list')):
         #    solver.solver_mode = caffe_pb2.SolverParameter.GPU
