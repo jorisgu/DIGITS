@@ -513,11 +513,13 @@ class CaffeTrainTask(TrainTask):
         solver.net = self.train_val_file
 
         # Set CPU/GPU mode
-        if config_value('caffe')['cuda_enabled'] and \
-                bool(config_value('gpu_list')):
-            solver.solver_mode = caffe_pb2.SolverParameter.GPU
-        else:
-            solver.solver_mode = caffe_pb2.SolverParameter.CPU
+        #if config_value('caffe')['cuda_enabled'] and \
+        #        bool(config_value('gpu_list')):
+        #    solver.solver_mode = caffe_pb2.SolverParameter.GPU
+        #else:
+        solver.solver_mode = caffe_pb2.SolverParameter.CPU
+
+
 
         solver.snapshot_prefix = self.snapshot_prefix
 
