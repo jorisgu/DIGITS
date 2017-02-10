@@ -511,13 +511,13 @@ class CaffeTrainTask(TrainTask):
         # get enum value for solver type
         solver.solver_type = getattr(solver, self.solver_type)
         solver.net = self.train_val_file
-        
-        # GPU removed
-        # # Set CPU/GPU mode
-        # if config_value('caffe')['cuda_enabled'] and bool(config_value('gpu_list')):
-        #    solver.solver_mode = caffe_pb2.SolverParameter.GPU
-        # else:
-        solver.solver_mode = caffe_pb2.SolverParameter.CPU
+
+
+        # Set CPU/GPU mode
+        if config_value('caffe')['cuda_enabled'] and bool(config_value('gpu_list')):
+            solver.solver_mode = caffe_pb2.SolverParameter.GPU
+        else:
+            solver.solver_mode = caffe_pb2.SolverParameter.CPU
 
         solver.snapshot_prefix = self.snapshot_prefix
 
@@ -823,13 +823,12 @@ class CaffeTrainTask(TrainTask):
         solver.solver_type = getattr(solver, self.solver_type)
         solver.net = self.train_val_file
 
-        # GPU removed
-        # # Set CPU/GPU mode
-        # if config_value('caffe')['cuda_enabled'] and \
-        #        bool(config_value('gpu_list')):
-        #    solver.solver_mode = caffe_pb2.SolverParameter.GPU
-        # else:
-        solver.solver_mode = caffe_pb2.SolverParameter.CPU
+
+        # Set CPU/GPU mode
+        if config_value('caffe')['cuda_enabled'] and bool(config_value('gpu_list')):
+            solver.solver_mode = caffe_pb2.SolverParameter.GPU
+        else:
+            solver.solver_mode = caffe_pb2.SolverParameter.CPU
 
         solver.snapshot_prefix = self.snapshot_prefix
 
@@ -1029,25 +1028,25 @@ class CaffeTrainTask(TrainTask):
                 'train',
                 '--solver=%s' % self.path(self.solver_file),
                 ]
-        # GPU removed
-        # if 'gpus' in resources and False:
-        #     identifiers = []
-        #     for identifier, value in resources['gpus']:
-        #         identifiers.append(identifier)
-        #     if len(identifiers) == 1:
-        #         args.append('--gpu=%s' % identifiers[0])
-        #     elif len(identifiers) > 1:
-        #         if config_value('caffe')['flavor'] == 'NVIDIA':
-        #             if (utils.parse_version(config_value('caffe')['version'])
-        #                     < utils.parse_version('0.14.0-alpha')):
-        #                 # Prior to version 0.14, NVcaffe used the --gpus switch
-        #                 args.append('--gpus=%s' % ','.join(identifiers))
-        #             else:
-        #                 args.append('--gpu=%s' % ','.join(identifiers))
-        #         elif config_value('caffe')['flavor'] == 'BVLC':
-        #             args.append('--gpu=%s' % ','.join(identifiers))
-        #         else:
-        #             raise ValueError('Unknown flavor.  Support NVIDIA and BVLC flavors only.')
+
+        if 'gpus' in resources:
+            identifiers = []
+            for identifier, value in resources['gpus']:
+                identifiers.append(identifier)
+            if len(identifiers) == 1:
+                args.append('--gpu=%s' % identifiers[0])
+            elif len(identifiers) > 1:
+                if config_value('caffe')['flavor'] == 'NVIDIA':
+                    if (utils.parse_version(config_value('caffe')['version'])
+                            < utils.parse_version('0.14.0-alpha')):
+                        # Prior to version 0.14, NVcaffe used the --gpus switch
+                        args.append('--gpus=%s' % ','.join(identifiers))
+                    else:
+                        args.append('--gpu=%s' % ','.join(identifiers))
+                elif config_value('caffe')['flavor'] == 'BVLC':
+                    args.append('--gpu=%s' % ','.join(identifiers))
+                else:
+                    raise ValueError('Unknown flavor.  Support NVIDIA and BVLC flavors only.')
         if self.pretrained_model:
             args.append('--weights=%s' % ','.join(map(lambda x: self.path(x),
                                                       self.pretrained_model.split(os.path.pathsep))))
@@ -1845,7 +1844,7 @@ def filterLayersByState(network):
         included_deploy = _layerIncludedInState(layer, deploy_state)
 
         # Treat data layers differently (more processing done later)
-        if 'Data' in layer.type:
+        if 'Data' in layer.type or 'PyData' in layer.name:
             data_layers.layer.add().CopyFrom(layer)
             rule = None
             if not included_train:
