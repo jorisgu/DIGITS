@@ -474,8 +474,6 @@ class CaffeTrainTask(TrainTask):
         # Input
         deploy_network.input.append('data')
 
-        #deploy_network.input.append('data0')
-        #deploy_network.input.append('data1')
         shape = deploy_network.input_shape.add()
         shape.dim.append(1)
         shape.dim.append(self.dataset.get_feature_dims()[2])
@@ -640,83 +638,22 @@ class CaffeTrainTask(TrainTask):
         train_val_network = caffe_pb2.NetParameter()
 
         # Data layers
-        # TODO clean this up
 
         train_image_data_layer = None
         train_label_data_layer = None
         val_image_data_layer = None
         val_label_data_layer = None
 
-        train_image_data_layer0 = None
-        train_label_data_layer0 = None
-        val_image_data_layer0 = None
-        val_label_data_layer0 = None
-
-        train_image_data_layer1 = None
-        train_label_data_layer1 = None
-        val_image_data_layer1 = None
-        val_label_data_layer1 = None
-
         # Find the existing Data layers
         for layer in data_layers.layer:
             for rule in layer.include:
                 if rule.phase == caffe_pb2.TRAIN:
-                    for top_name in layer.top:
-                        if 'data0' in top_name:
-                            assert train_image_data_layer0 is None, \
-                                'cannot specify 2 train image data0 layers'
-                            train_image_data_layer0 = layer
-                        elif 'data1' in top_name:
-                            assert train_image_data_layer1 is None, \
-                                'cannot specify 2 train image data1 layers'
-                            train_image_data_layer1 = layer
-                        elif 'data' in top_name:
-                            assert train_image_data_layer is None, \
-                                'cannot specify 2 train image data layers'
-                            train_image_data_layer = layer
-                        elif 'label0' in top_name:
-                            assert train_label_data_layer0 is None, \
-                                'cannot specify 2 train label0 data layers'
-                            train_label_data_layer0 = layer
-                        elif 'label1' in top_name:
-                            assert train_label_data_layer1 is None, \
-                                'cannot specify 2 train label1 data layers'
-                            train_label_data_layer1 = layer
-                        elif 'label' in top_name:
-                            assert train_label_data_layer is None, \
-                                'cannot specify 2 train label data layers'
-                            train_label_data_layer = layer
+                        train_image_data_layer = layer
                 elif rule.phase == caffe_pb2.TEST:
-                    for top_name in layer.top:
-                        if 'data0' in top_name:
-                            assert val_image_data_layer0 is None, \
-                                'cannot specify 2 val image data0 layers'
-                            val_image_data_layer0 = layer
-                        elif 'data1' in top_name:
-                            assert val_image_data_layer1 is None, \
-                                'cannot specify 2 val image data1 layers'
-                            val_image_data_layer1 = layer
-                        elif 'data' in top_name:
-                            assert val_image_data_layer is None, \
-                                'cannot specify 2 val image data layers'
-                            val_image_data_layer = layer
-                        elif 'label0' in top_name:
-                            assert val_label_data_layer0 is None, \
-                                'cannot specify 2 val label0 data layers'
-                            val_label_data_layer0 = layer
-                        elif 'label1' in top_name:
-                            assert val_label_data_layer1 is None, \
-                                'cannot specify 2 val label1 data layers'
-                            val_label_data_layer1 = layer
-                        elif 'label' in top_name:
-                            assert val_label_data_layer is None, \
-                                'cannot specify 2 val label data layers'
-                            val_label_data_layer = layer
+                        val_image_data_layer = layer
 
         # Create and add the Data layers
 
-        assert train_image_data_layer is None, \
-            'WTF'
         ### BASIC LAYERS
         # (uses info from existing data layers, where possible)
         train_image_data_layer = self.make_generic_data_layer(train_feature_db_path, train_image_data_layer, 'data', 'data', caffe_pb2.TRAIN)
@@ -734,43 +671,6 @@ class CaffeTrainTask(TrainTask):
         val_label_data_layer = self.make_generic_data_layer(val_label_db_path, val_label_data_layer, 'label', 'label', caffe_pb2.TEST)
         if val_label_data_layer is not None:
             train_val_network.layer.add().CopyFrom(val_label_data_layer)
-
-        ## LAYERS 0
-        # (uses info from existing data layers, where possible)
-        train_image_data_layer0 = self.make_generic_data_layer('', train_image_data_layer0, 'data0', 'data0', caffe_pb2.TRAIN)
-        if train_image_data_layer0 is not None:
-            train_val_network.layer.add().CopyFrom(train_image_data_layer0)
-
-        train_label_data_layer0 = self.make_generic_data_layer('', train_label_data_layer0, 'label0', 'label0', caffe_pb2.TRAIN)
-        if train_label_data_layer0 is not None:
-            train_val_network.layer.add().CopyFrom(train_label_data_layer0)
-
-        val_image_data_layer0 = self.make_generic_data_layer('', val_image_data_layer0, 'data0', 'data0', caffe_pb2.TEST)
-        if val_image_data_layer0 is not None:
-            train_val_network.layer.add().CopyFrom(val_image_data_layer0)
-
-        val_label_data_layer0 = self.make_generic_data_layer('', val_label_data_layer0, 'label0', 'label0', caffe_pb2.TEST)
-        if val_label_data_layer0 is not None:
-            train_val_network.layer.add().CopyFrom(val_label_data_layer0)
-
-
-        ### LAYERS 1
-        # (uses info from existing data layers, where possible)
-        train_image_data_layer1 = self.make_generic_data_layer('', train_image_data_layer1, 'data1', 'data1', caffe_pb2.TRAIN)
-        if train_image_data_layer1 is not None:
-            train_val_network.layer.add().CopyFrom(train_image_data_layer1)
-
-        train_label_data_layer1 = self.make_generic_data_layer('', train_label_data_layer1, 'label1', 'label1', caffe_pb2.TRAIN)
-        if train_label_data_layer1 is not None:
-            train_val_network.layer.add().CopyFrom(train_label_data_layer1)
-
-        val_image_data_layer1 = self.make_generic_data_layer('', val_image_data_layer1, 'data1', 'data1', caffe_pb2.TEST)
-        if val_image_data_layer1 is not None:
-            train_val_network.layer.add().CopyFrom(val_image_data_layer1)
-
-        val_label_data_layer1 = self.make_generic_data_layer('', val_label_data_layer1, 'label1', 'label1', caffe_pb2.TEST)
-        if val_label_data_layer1 is not None:
-            train_val_network.layer.add().CopyFrom(val_label_data_layer1)
 
         # Add non-data layers
         train_val_network.MergeFrom(train_val_layers)
@@ -838,17 +738,7 @@ class CaffeTrainTask(TrainTask):
             solver.iter_size = self.batch_accumulation
 
         # Epochs -> Iterations
-
-        if train_image_data_layer is not None:
-            train_iter = int(math.ceil(
-                float(self.dataset.get_entry_count(constants.TRAIN_DB)) /
-                (train_image_data_layer.data_param.batch_size * solver.iter_size)
-            ))
-        else:
-            train_iter = int(math.ceil(
-                float(self.dataset.get_entry_count(constants.TRAIN_DB)) /
-                (train_image_data_layer0.data_param.batch_size * solver.iter_size)
-            ))
+        train_iter = int(math.ceil(float(self.dataset.get_entry_count(constants.TRAIN_DB)) /(train_image_data_layer.data_param.batch_size * solver.iter_size)))
         solver.max_iter = train_iter * self.train_epochs
         snapshot_interval = self.snapshot_interval * train_iter
         if 0 < snapshot_interval <= 1:
@@ -913,18 +803,7 @@ class CaffeTrainTask(TrainTask):
         solver.weight_decay = solver.base_lr / 100.0
 
         # Display 8x per epoch, or once per 5000 images, whichever is more frequent
-
-        if train_image_data_layer is not None:
-            solver.display = max(1, min(
-                int(math.floor(float(solver.max_iter) / (self.train_epochs * 8))),
-                int(math.ceil(5000.0 / (train_image_data_layer.data_param.batch_size * solver.iter_size)))
-            ))
-        else:
-            solver.display = max(1, min(
-                int(math.floor(float(solver.max_iter) / (self.train_epochs * 8))),
-                int(math.ceil(5000.0 / (train_image_data_layer0.data_param.batch_size * solver.iter_size)))
-            ))
-
+        solver.display = max(1, min(int(math.floor(float(solver.max_iter) / (self.train_epochs * 8))),int(math.ceil(5000.0 / (train_image_data_layer.data_param.batch_size * solver.iter_size)))))
         if self.random_seed is not None:
             solver.random_seed = self.random_seed
 
@@ -952,7 +831,10 @@ class CaffeTrainTask(TrainTask):
             layer.CopyFrom(orig_layer)
         else:
             return None
-        layer.type = 'Data'
+        if "Py" in layer.name:
+            layer.type = 'Python'
+        else:
+            layer.type = 'Data'
         if not layer.HasField('name'):
             layer.name = name
         if not len(layer.top):
