@@ -1660,8 +1660,7 @@ def cleanedUpClassificationNetwork(original_network, num_categories):
 
         elif layer.type == 'Accuracy':
             # Check to see if top_k > num_categories
-            if (layer.accuracy_param.HasField('top_k') and
-                    layer.accuracy_param.top_k > num_categories):
+            if (layer.accuracy_param.HasField('top_k') and layer.accuracy_param.top_k > num_categories):
                 del network.layer[i]
 
         elif layer.type == 'InnerProduct':
