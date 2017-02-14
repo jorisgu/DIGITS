@@ -598,9 +598,9 @@ class CaffeTrainTask(TrainTask):
         if solver.solver_type == solver.RMSPROP:
             solver.rms_decay = self.rms_decay
 
-        # Display 8x per epoch, or once per 5000 images, whichever is more frequent
+        # Display 20x per epoch, or once per 5000 images, whichever is more frequent
         solver.display = max(1, min(
-            int(math.floor(float(solver.max_iter) / (self.train_epochs * 8))),
+            int(math.floor(float(solver.max_iter) / (self.train_epochs * 20))),
             int(math.ceil(5000.0 / (train_data_layer.data_param.batch_size * solver.iter_size)))
         ))
 
@@ -807,7 +807,10 @@ class CaffeTrainTask(TrainTask):
         if self.random_seed is not None:
             solver.random_seed = self.random_seed
 
-        solver.test_initialization = 0
+
+        for i, layer in enumerate(network.layer):
+            if 'noInit' in layer.name:
+                solver.test_initialization = 0
         with open(self.path(self.solver_file), 'w') as outfile:
             text_format.PrintMessage(solver, outfile)
         self.solver = solver  # save for later
@@ -1684,6 +1687,8 @@ def cleanedUpGenericNetwork(original_network):
             assert layer.type in ['Data'], \
                 'Unsupported data layer type %s' % layer.type
 
+        elif layer.type == 'digits':
+            del network.layer[i]
         elif layer.type == 'Input':
             # DIGITS handles the deploy file for you
             del network.layer[i]
