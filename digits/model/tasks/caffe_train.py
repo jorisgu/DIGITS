@@ -213,13 +213,14 @@ class CaffeTrainTask(TrainTask):
     def before_run(self):
         super(CaffeTrainTask, self).before_run()
 
-        if isinstance(self.job, digits.model.images.classification.ImageClassificationModelJob):
-            self.save_files_classification()
-        elif isinstance(self.job, digits.model.images.generic.GenericImageModelJob):
-            self.save_files_generic()
-        else:
-            raise NotImplementedError
+        # if isinstance(self.job, digits.model.images.classification.ImageClassificationModelJob):
+        #     self.save_files_classification()
+        # elif isinstance(self.job, digits.model.images.generic.GenericImageModelJob):
+        #     self.save_files_generic()
+        # else:
+        #     raise NotImplementedError
 
+        self.save_files_generic()
         self.caffe_log = open(self.path(self.CAFFE_LOG), 'a')
         self.saving_snapshot = False
         self.receiving_train_output = False
