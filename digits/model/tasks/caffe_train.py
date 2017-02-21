@@ -1004,8 +1004,9 @@ class CaffeTrainTask(TrainTask):
             # index = int(match.group(2))
             name = match.group(3)
             value = match.group(4)
-            assert value.lower() != 'nan', \
-                'Network outputted NaN for "%s" (%s phase). Try decreasing your learning rate.' % (name, phase)
+            # assert value.lower() != 'nan', 'Network outputted NaN for "%s" (%s phase). Try decreasing your learning rate.' % (name, phase)
+            if value.lower() == 'nan':
+                return True
             value = float(value)
 
             # Find the layer type
