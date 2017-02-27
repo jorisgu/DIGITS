@@ -220,7 +220,8 @@ class CaffeTrainTask(TrainTask):
         # else:
         #     raise NotImplementedError
 
-        self.save_files_generic()
+        #self.save_files_generic()
+        self.save_files_original()
         self.caffe_log = open(self.path(self.CAFFE_LOG), 'a')
         self.saving_snapshot = False
         self.receiving_train_output = False
@@ -608,6 +609,153 @@ class CaffeTrainTask(TrainTask):
         if self.random_seed is not None:
             solver.random_seed = self.random_seed
 
+        with open(self.path(self.solver_file), 'w') as outfile:
+            text_format.PrintMessage(solver, outfile)
+        self.solver = solver  # save for later
+
+        return True
+
+    def save_files_original(self):
+        """
+        Save solver, train_val and deploy files to disk
+        """
+        size_test_db = 5050
+        size_train_db = 5285
+
+        # Write to original.prototxt
+        with open(self.path(self.model_file), 'w') as outfile:
+            text_format.PrintMessage(self.network, outfile)
+
+        # Write to train_val.prototxt
+        with open(self.path(self.train_val_file), 'w') as outfile:
+            text_format.PrintMessage(self.network, outfile)
+
+        train_data_layer = []
+        val_data_layer = []
+
+        # Find the existing Data layers
+        for layer in self.network.layer:
+            for rule in layer.include:
+                if rule.phase == caffe_pb2.TRAIN:
+                        train_data_layer.append(layer)
+                elif rule.phase == caffe_pb2.TEST:
+                        val_data_layer.append(layer)
+
+
+        # network sanity checks
+        self.logger.debug("Network sanity check - train")
+        CaffeTrainTask.net_sanity_check(self.network, caffe_pb2.TRAIN)
+        if len(val_data_layer)>0:
+            self.logger.debug("Network sanity check - val")
+            CaffeTrainTask.net_sanity_check(self.network, caffe_pb2.TEST)
+
+
+
+        # Write solver file
+        solver = caffe_pb2.SolverParameter()
+        # get enum value for solver type
+        solver.solver_type = getattr(solver, self.solver_type)
+        solver.net = self.train_val_file
+
+        # Set CPU/GPU mode
+        if config_value('caffe')['cuda_enabled'] and bool(config_value('gpu_list')):
+            solver.solver_mode = caffe_pb2.SolverParameter.GPU
+        else:
+            solver.solver_mode = caffe_pb2.SolverParameter.CPU
+
+        solver.snapshot_prefix = self.snapshot_prefix
+
+        # Batch accumulation
+        from digits.frameworks import CaffeFramework
+        if self.batch_accumulation and CaffeFramework().can_accumulate_gradients():
+            solver.iter_size = self.batch_accumulation
+
+        # Epochs -> Iterations
+        # source
+        if train_data_layer[0].data_param.HasField('source'):
+            first_train_db = train_data_layer[0].data_param.source
+        else:
+            self.logger.warning('data_param.source is not defined in proto !')
+        if val_data_layer[0].data_param.HasField('source'):
+            first_val_db = val_data_layer[0].data_param.source
+        else:
+            self.logger.warning('data_param.source is not defined in proto !')
+
+
+        # train_iter = int(math.ceil(float(self.dataset.get_entry_count(first_train_db)) /(train_data_layer[0].data_param.batch_size * solver.iter_size)))
+        train_iter = int(math.ceil(float(size_train_db) /(train_data_layer[0].data_param.batch_size * solver.iter_size)))
+        solver.max_iter = train_iter * self.train_epochs
+        snapshot_interval = self.snapshot_interval * train_iter
+        if 0 < snapshot_interval <= 1:
+            solver.snapshot = 1  # don't round down
+        elif 1 < snapshot_interval < solver.max_iter:
+            solver.snapshot = int(snapshot_interval)
+        else:
+            solver.snapshot = 0  # only take one snapshot at the end
+
+        if len(val_data_layer)>0:
+            # solver.test_iter.append(int(math.ceil(float(self.dataset.get_entry_count(first_val_db)) / val_data_layer[0].data_param.batch_size)))
+            solver.test_iter.append(int(math.ceil(float(size_test_db) / val_data_layer[0].data_param.batch_size)))
+            val_interval = self.val_interval * train_iter
+            if 0 < val_interval <= 1:
+                solver.test_interval = 1  # don't round down
+            elif 1 < val_interval < solver.max_iter:
+                solver.test_interval = int(val_interval)
+            else:
+                solver.test_interval = solver.max_iter  # only test once at the end
+
+        # Learning rate
+        solver.base_lr = self.learning_rate
+        solver.lr_policy = self.lr_policy['policy']
+        scale = float(solver.max_iter) / 100.0
+        if solver.lr_policy == 'fixed':
+            pass
+        elif solver.lr_policy == 'step':
+            # stepsize = stepsize * scale
+            solver.stepsize = int(math.ceil(float(self.lr_policy['stepsize']) * scale))
+            solver.gamma = self.lr_policy['gamma']
+        elif solver.lr_policy == 'multistep':
+            for value in self.lr_policy['stepvalue'].split(','):
+                # stepvalue = stepvalue * scale
+                solver.stepvalue.append(int(math.ceil(float(value) * scale)))
+            solver.gamma = self.lr_policy['gamma']
+        elif solver.lr_policy == 'exp':
+            # gamma = gamma^(1/scale)
+            solver.gamma = math.pow(self.lr_policy['gamma'], 1.0 / scale)
+        elif solver.lr_policy == 'inv':
+            # gamma = gamma / scale
+            solver.gamma = self.lr_policy['gamma'] / scale
+            solver.power = self.lr_policy['power']
+        elif solver.lr_policy == 'poly':
+            solver.power = self.lr_policy['power']
+        elif solver.lr_policy == 'sigmoid':
+            # gamma = -gamma / scale
+            solver.gamma = -1.0 * self.lr_policy['gamma'] / scale
+            # stepsize = stepsize * scale
+            solver.stepsize = int(math.ceil(float(self.lr_policy['stepsize']) * scale))
+        else:
+            raise Exception('Unknown lr_policy: "%s"' % solver.lr_policy)
+
+        # These solver types don't support momentum
+        unsupported = [solver.ADAGRAD]
+        try:
+            unsupported.append(solver.RMSPROP)
+        except AttributeError:
+            pass
+
+        if solver.solver_type not in unsupported:
+            solver.momentum = 0.9
+        solver.weight_decay = solver.base_lr / 100.0
+
+        # Display 8x per epoch, or once per 5000 images, whichever is more frequent
+        solver.display = max(1, min(int(math.floor(float(solver.max_iter) / (self.train_epochs * 8))),int(math.ceil(5000.0 / (train_data_layer[0].data_param.batch_size * solver.iter_size)))))
+        if self.random_seed is not None:
+            solver.random_seed = self.random_seed
+
+
+        for i, layer in enumerate(self.network.layer):
+            if 'noInit' in layer.name:
+                solver.test_initialization = 0
         with open(self.path(self.solver_file), 'w') as outfile:
             text_format.PrintMessage(solver, outfile)
         self.solver = solver  # save for later
